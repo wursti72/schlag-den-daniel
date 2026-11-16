@@ -38,8 +38,8 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff;outline-offset:2px}
     <button id="bSubmit" hidden>Tipp abgeben</button>
     <button id="bNext" hidden>Nächste Runde</button>
     <button id="bReveal" class="s" hidden>Jetzt aufdecken</button>
-    <button id="bP1" class="s" hidden>+1 Orange</button>
-    <button id="bP2" class="s" hidden>+1 Türkis</button>
+    <button id="bP1" class="s" hidden>+1 Daniel</button>
+    <button id="bP2" class="s" hidden>+1 Gäste</button>
     <button id="bReset" class="s" hidden>Neustart</button>
   </footer>
 </div>
@@ -76,7 +76,7 @@ const $ = id => document.getElementById(id);
 const P = new URLSearchParams(location.search);
 const role = P.get("r") || "";                       // leiter | 1 | 2
 const room = (P.get("raum") || "schlag-den-daniel-wo-ist").replace(/[^a-z0-9_-]/gi, "");
-const N = {p1: P.get("n1") || "Orange", p2: P.get("n2") || "Türkis"};
+const N = {p1: P.get("n1") || "Daniel", p2: P.get("n2") || "Gäste"};
 const me = role === "1" || role === "2" ? "p" + role : null;
 const isLeiter = role === "leiter";
 
@@ -84,7 +84,7 @@ if (!role) {
   $("map").hidden = true; document.querySelector("footer").hidden = true;
   $("pick").hidden = false;
   const base = `?raum=${room}&n1=${encodeURIComponent(N.p1)}&n2=${encodeURIComponent(N.p2)}`;
-  $("pick").innerHTML = `<a href="${base}&r=leiter">Spielleiter (großer Bildschirm)</a><a href="${base}&r=1" style="border-color:var(--p1)">Spieler ${N.p1}</a><a href="${base}&r=2" style="border-color:var(--p2)">Spieler ${N.p2}</a>`;
+  $("pick").innerHTML = `<a href="${base}&r=leiter">Spielleiter (großer Bildschirm)</a><a href="${base}&r=1" style="border-color:var(--p1)">${N.p1}</a><a href="${base}&r=2" style="border-color:var(--p2)">${N.p2}</a>`;
   throw new Error("Rolle wählen");
 }
 if (Object.values(CONFIG).some(v => v === "HIER")) {
