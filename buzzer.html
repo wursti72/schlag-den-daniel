@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Buzzer · Schlag den Daniel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0b1030;--card:#161d4d;--line:#2c3577;--fg:#f3f1ea;--mute:#a3a9d6;--gold:#ffd24a;--p1:#ff7a1a;--p2:#2bdccb;--display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:"Barlow","Segoe UI",system-ui,sans-serif;font-weight:500;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#app{display:flex;flex-direction:column;height:100%}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;background:var(--card);border-bottom:3px solid var(--gold);font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:clamp(1.3rem,3.5vw,2.6rem);line-height:1}
+#who{color:var(--mute);font-size:.7em}
+main{flex:1;min-height:0;display:grid;place-items:center;padding:16px;text-align:center;transition:background .15s}
+main.p1{background:var(--p1);color:#1a0b00}main.p2{background:var(--p2);color:#00201d}
+.big{font-family:var(--display);font-weight:900;text-transform:uppercase;line-height:.9;font-size:clamp(3rem,15vw,16rem)}
+.sub{font-size:clamp(1rem,2.6vw,2rem);margin-top:.6em;font-weight:600}
+#buzz{width:min(82vw,62vh);height:min(82vw,62vh);border-radius:50%;border:0;cursor:pointer;font-family:var(--display);font-weight:900;text-transform:uppercase;font-size:clamp(2.4rem,13vw,7rem);line-height:.95;color:#0b1030;background:var(--c);box-shadow:0 14px 0 rgba(0,0,0,.45),inset 0 -10px 0 rgba(0,0,0,.18);-webkit-tap-highlight-color:transparent}
+#buzz:active:not(:disabled){transform:translateY(8px);box-shadow:0 6px 0 rgba(0,0,0,.45),inset 0 -10px 0 rgba(0,0,0,.18)}
+#buzz:disabled{background:var(--card);color:var(--mute);box-shadow:inset 0 0 0 4px var(--line);cursor:default}
+#buzz.won{background:var(--gold)}
+footer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:10px 16px;background:var(--card);font-size:clamp(.95rem,1.8vw,1.3rem)}
+#msg{flex:1;min-width:160px}
+button.b{font:inherit;font-weight:700;padding:12px 18px;border:0;border-radius:4px;background:var(--gold);color:#2a1d00;cursor:pointer}
+button.s{background:var(--bg);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line)}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:2px}
+label{display:flex;gap:8px;align-items:center}
+[hidden]{display:none!important}
+#pick{padding:24px;display:grid;gap:12px;width:min(420px,100%)}
+#pick a{display:block;padding:16px;border-radius:4px;background:var(--card);color:var(--fg);text-decoration:none;font-family:var(--display);font-weight:900;font-size:1.6rem;text-transform:uppercase;letter-spacing:.04em;border-left:8px solid var(--gold);text-align:left}
+</style>
+</head>
+<body>
+<div id="app">
+  <header><div>Buzzer</div><div id="who"></div></header>
+  <main id="main">
+    <div id="pick" hidden></div>
+    <div id="lead" hidden><div class="big" id="lbig">Gesperrt</div><div class="sub" id="lsub"></div></div>
+    <button id="buzz" hidden disabled>Warten</button>
+  </main>
+  <footer id="foot" hidden>
+    <div id="msg"></div>
+    <label id="lauto" hidden><input type="checkbox" id="auto" checked> nach 5 s automatisch freigeben</label>
+    <button id="bArm" class="b" hidden>Buzzer freigeben</button>
+    <button id="bLock" class="b s" hidden>Sperren</button>
+  </footer>
+</div>
+
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getDatabase,ref,onValue,set,runTransaction,onDisconnect} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* Dieselben Firebase-Werte wie in wo-ist.html */
+const CONFIG = {
+  apiKey: "AIzaSyBtHeKW_rkyMNRLvTxnge_MajgfD3qpzmk",
+  authDomain: "wo-ist-41476.firebaseapp.com",
+  databaseURL: "https://wo-ist-41476-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "wo-ist-41476",
+  appId: "1:201395566109:web:b928c6bfcb14238b1cb8f4"
+};
+const AUTO_SECONDS = 5; // so lange bleibt der Buzzer nach einem Treffer gesperrt
+
+const $ = id => document.getElementById(id);
+const P = new URLSearchParams(location.search);
+const role = P.get("r") || "";                       // leiter | 1 | 2
+const room = (P.get("raum") || "schlag-den-daniel-buzzer").replace(/[^a-z0-9_-]/gi, "");
+const N = {p1: P.get("n1") || "Daniel", p2: P.get("n2") || "Gäste"};
+const me = role === "1" || role === "2" ? "p" + role : null;
+const isLeiter = role === "leiter";
+
+if (!me && !isLeiter) {
+  $("pick").hidden = false;
+  const base = `?raum=${room}&n1=${encodeURIComponent(N.p1)}&n2=${encodeURIComponent(N.p2)}`;
+  $("pick").innerHTML = `<a href="${base}&r=leiter">Spielleiter (Laptop)</a><a href="${base}&r=1" style="border-color:var(--p1)">Buzzer ${N.p1}</a><a href="${base}&r=2" style="border-color:var(--p2)">Buzzer ${N.p2}</a>`;
+  throw new Error("Rolle wählen");
+}
+
+const db = getDatabase(initializeApp(CONFIG));
+const bRef = ref(db, `rooms/${room}/buzz`);
+let B = {armed: false, winner: ""}, here = {}, online = false, lastKey = "", autoTO = null;
+
+/* ----- Ton (nur Spielleiter) ----- */
+let ac = null;
+function audio() { try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); } catch (e) {} }
+function beep(f, at, dur) {
+  if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + at;
+  o.type = "square"; o.frequency.value = f; g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+  o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + .02);
+}
+// Daniel = zwei hohe Töne, Gäste = ein tiefer langer Ton: so hört man den Sieger auch ohne hinzusehen
+const sound = w => w === "p1" ? (beep(880, 0, .16), beep(1175, .18, .3)) : (beep(196, 0, .55), beep(147, 0, .55));
+
+onValue(ref(db, ".info/connected"), s => {
+  online = !!s.val();
+  if (online && me) {
+    const h = ref(db, `rooms/${room}/here/${me}/${Math.random().toString(36).slice(2, 9)}`);
+    onDisconnect(h).remove(); set(h, true);
+  }
+  render();
+});
+onValue(bRef, s => { B = s.val() || {armed: false, winner: ""}; render(); });
+if (isLeiter) onValue(ref(db, `rooms/${room}/here`), s => { here = s.val() || {}; render(); });
+
+const arm = () => { audio(); clearTimeout(autoTO); set(bRef, {armed: true, winner: "", n: (B.n || 0) + 1}); };
+const lock = () => { clearTimeout(autoTO); set(bRef, {armed: false, winner: "", n: B.n || 0}); };
+function press() {
+  if (!me || !B.armed || B.winner) return;
+  try { navigator.wakeLock && navigator.wakeLock.request("screen").catch(() => {}); } catch (e) {}
+  // Transaktion: Die Datenbank entscheidet, wer zuerst war
+  runTransaction(bRef, c => {
+    if (c === null) return null;
+    if (!c.armed || c.winner) return;
+    c.winner = me; c.armed = false; return c;
+  });
+}
+
+function render() {
+  const w = B.winner || "";
+  $("foot").hidden = false;
+  if (isLeiter) {
+    $("who").textContent = "Spielleiter";
+    $("lead").hidden = false; $("bArm").hidden = $("bLock").hidden = $("lauto").hidden = false;
+    $("main").className = w;
+    $("lbig").textContent = w ? N[w] + "!" : B.armed ? "Frei" : "Gesperrt";
+    $("lsub").textContent = w ? "war schneller" : B.armed ? "Wer zuerst drückt, gewinnt." : "Leertaste gibt den Buzzer frei.";
+    const c = k => Object.keys(here[k] || {}).length;
+    $("msg").textContent = online ? `Angemeldet: ${N.p1} ${c("p1")} · ${N.p2} ${c("p2")}` : "Keine Verbindung. Internet prüfen.";
+    const key = (B.n || 0) + w;
+    if (w && key !== lastKey) {
+      sound(w);
+      clearTimeout(autoTO);
+      if ($("auto").checked) autoTO = setTimeout(arm, AUTO_SECONDS * 1000);
+    }
+    lastKey = key;
+  } else {
+    $("who").textContent = N[me];
+    const b = $("buzz"); b.hidden = false;
+    b.style.setProperty("--c", `var(--${me})`);
+    b.disabled = !B.armed || !!w || !online;
+    b.classList.toggle("won", w === me);
+    b.textContent = w === me ? "Erster!" : w ? "Zu spät" : B.armed ? "Buzz!" : "Warten";
+    $("msg").textContent = !online ? "Keine Verbindung. Internet prüfen." : w === me ? "Du warst schneller. Antwort geben!" : w ? `${N[w]} war schneller.` : B.armed ? "Drücken, sobald du die Antwort weißt." : "Der Spielleiter gibt den Buzzer gleich frei.";
+    if (w === me && lastKey !== (B.n || 0) + w) { try { navigator.vibrate && navigator.vibrate(200); } catch (e) {} }
+    lastKey = (B.n || 0) + w;
+  }
+}
+
+$("buzz").addEventListener("pointerdown", e => { e.preventDefault(); press(); });
+$("bArm").onclick = arm;
+$("bLock").onclick = lock;
+if (isLeiter) document.addEventListener("keydown", e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); arm(); } });
+render();
+</script>
+</body>
+</html>
