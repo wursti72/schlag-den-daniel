@@ -143,6 +143,12 @@ button.go{background:var(--gold);border-color:var(--gold);color:#2a1d00}
 #help td,#help th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
 #help kbd{font:600 13px var(--body);background:var(--night-2);border:1px solid var(--line);border-radius:3px;padding:1px 6px}
 #help .tw{overflow-x:auto}
+#slots{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.slot{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;padding:10px;background:var(--night-2);border:1px solid var(--line);border-radius:4px}
+.slot label{grid-column:1/-1;font-weight:700}
+.slot input{min-width:0;font:500 13px var(--body);color:var(--ink)}
+.slot .sname{grid-column:1;font-size:13px;color:var(--mute)}
+.slot button{grid-column:2;grid-row:2/4;padding:8px 10px}
 @media (prefers-reduced-motion:reduce){.logo.anim{animation:none}#bar{transition:none}}
 </style>
 </head>
@@ -219,9 +225,9 @@ button.go{background:var(--gold);border-color:var(--gold);color:#2a1d00}
       <p style="margin-top:8px"><input type="url" id="bz-url" placeholder="https://…/buzzer.html" aria-label="Adresse des Buzzers"></p>
     </div>
     <div>
-      <h4>Eigene Musik</h4>
-      <p>Die eingebaute Musik ist eine eigene, synthetische Studioschleife. Eine eigene Audiodatei läuft stattdessen in Dauerschleife:</p>
-      <p style="margin-top:8px"><input type="file" id="mp3" accept="audio/*"></p>
+      <h4>Eigene Töne</h4>
+      <p>Für jeden Platz kann eine Audiodatei von diesem Laptop geladen werden. Sie bleibt in diesem Browser gespeichert und wird nirgends hochgeladen. Leere Plätze nutzen den eingebauten Ton; fehlt nur „Spannung“, „Einmarsch“ oder „Finale“, läuft dort die Hintergrund-Datei weiter. Musik mit Taste <kbd>M</kbd> starten.</p>
+      <div id="slots"></div>
     </div>
     <div class="row" style="justify-content:flex-start">
       <button id="b-close" class="go">Schließen</button>
@@ -317,7 +323,7 @@ function total(side){return S.wins.reduce((a,w,i)=>a+(w===side?i+1:0),0)}
 const cur=()=>SLIDES[S.i];
 
 /* ---------- Ton ---------- */
-let ac,master,mg,musicOn=false,nextT=0,step=0,sched=null,noiseBuf,custom=null;
+let ac,master,mg,musicOn=false,nextT=0,step=0,sched=null,noiseBuf,synthOn=false;
 function audio(){
   if(ac){if(ac.state==='suspended')ac.resume().catch(()=>{});return true}
   try{
@@ -341,7 +347,7 @@ function hat(t,vol){
 }
 const ROOTS=[73.42,73.42,58.27,65.41]; // D, D, B, C
 function schedule(){
-  if(!musicOn||custom)return;
+  if(!synthOn)return;
   const tense=cur().t==='play', spb=60/(tense?124:100)/4;
   if(nextT<ac.currentTime)nextT=ac.currentTime+.05;
   while(nextT<ac.currentTime+.25){
@@ -356,10 +362,38 @@ function schedule(){
 }
 function setMusic(on){
   if(on&&!audio())return;
-  musicOn=on;$('#b-music').textContent=on?'Musik aus':'Musik an';
-  if(custom){if(on)custom.play().catch(()=>{});else custom.pause()}
-  clearInterval(sched);if(on&&!custom){nextT=0;sched=setInterval(schedule,60)}
+  musicOn=on;$('#b-music').textContent=on?'Musik aus':'Musik an';updateMusic();
 }
+/* Eigene Töne: je Platz eine Audiodatei vom Laptop. Bleibt im Browser dieses Geräts gespeichert, wird nirgends hochgeladen. */
+const SLOTS=[['intro','Einmarsch (Titelfolie)'],['bg','Hintergrund (Erklärfolien und Zwischenstand)'],['tense','Spannung (während der Spiele)'],['win','Spielgewinn (kurzer Jingle)'],['final','Finale (Siegerehrung)']];
+const SND={};let curLoop=null;
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('sdd-sound',1);r.onupgradeneeded=()=>r.result.createObjectStore('f');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function sndSave(k,file){try{const d=await idb(),st=d.transaction('f','readwrite').objectStore('f');file?st.put(file,k):st.delete(k)}catch(e){}}
+async function sndLoadAll(){try{const d=await idb();for(const [k] of SLOTS)await new Promise(r=>{const q=d.transaction('f').objectStore('f').get(k);q.onsuccess=()=>{if(q.result)setSnd(k,q.result,false);r()};q.onerror=()=>r()})}catch(e){}}
+function setSnd(k,file,save=true){
+  if(SND[k]){SND[k].pause();if(curLoop===SND[k])curLoop=null;delete SND[k]}
+  if(file){try{const a=new Audio(URL.createObjectURL(file));a.loop=k!=='win';a.volume=.7;a.fname=file.name||'Datei';SND[k]=a}catch(e){}}
+  if(save)sndSave(k,file);paintSlots();updateMusic();
+}
+function slotFor(){const t=cur().t;return t==='title'?'intro':t==='play'?'tense':t==='final'?'final':'bg'}
+function updateMusic(){
+  const k=slotFor(),want=musicOn?(SND[k]||SND.bg||null):null;
+  if(curLoop&&curLoop!==want)curLoop.pause();
+  if(want&&curLoop!==want){if(want===SND.intro||want===SND.final){try{want.currentTime=0}catch(e){}}want.play().catch(()=>{})}
+  curLoop=want;
+  const need=musicOn&&!want;
+  if(need&&!synthOn&&ac){nextT=0;clearInterval(sched);sched=setInterval(schedule,60);synthOn=true}
+  if(!need&&synthOn){clearInterval(sched);synthOn=false}
+}
+function playWin(){if(SND.win){try{SND.win.currentTime=0}catch(e){}SND.win.play().catch(()=>{})}else sfx.fanfare()}
+function buildSlots(){
+  $('#slots').innerHTML=SLOTS.map(([k,l])=>`<div class="slot"><label for="snd-${k}">${l}</label><input type="file" id="snd-${k}" accept="audio/*"><span id="sn-${k}" class="sname"></span><button id="sx-${k}">Entfernen</button></div>`).join('');
+  SLOTS.forEach(([k])=>{
+    $('#snd-'+k).addEventListener('change',e=>{const f=e.target.files[0];if(f)setSnd(k,f)});
+    $('#sx-'+k).addEventListener('click',()=>{$('#snd-'+k).value='';setSnd(k,null)});
+  });paintSlots();
+}
+function paintSlots(){SLOTS.forEach(([k])=>{const el=$('#sn-'+k);if(el)el.textContent=SND[k]?'Geladen: '+SND[k].fname:'Eingebauter Ton'})}
 const sfx={
   point(){if(!ac)return;const t=ac.currentTime;tone(880,t,.15,'triangle',.4);tone(1320,t+.12,.3,'triangle',.4)},
   tick(){if(!ac)return;tone(1000,ac.currentTime,.05,'square',.15)},
@@ -407,7 +441,7 @@ function award(side){
   if(g===1){clearTimeout(darkTO);p.ph='reveal'}
   if(g===2)p.ph='reveal';
   if(g===3)p[side]=GAMES[3].target; // Wo ist? läuft im Karten-Tab: ein Tastendruck setzt den Sieger
-  if(p[side]>=GAMES[g].target){S.wins[g]=side;sfx.fanfare()}else sfx.point();
+  if(p[side]>=GAMES[g].target){S.wins[g]=side;playWin()}else sfx.point();
   save();render();
 }
 function advance(){
@@ -434,7 +468,7 @@ function advance(){
 }
 function go(dir){const n=S.i+dir;if(n<0||n>=SLIDES.length)return;stopTimer();clearTimeout(darkTO);
   if(cur().t==='play'&&cur().g===1&&['show','dark'].includes(S.ps[1].ph))S.ps[1].ph='ready';
-  S.i=n;save();render();if(cur().t==='final'&&winner())sfx.fanfare()}
+  S.i=n;save();render();if(cur().t==='final'&&winner()&&!(musicOn&&(SND.final||SND.bg)))sfx.fanfare()}
 function undo(){if(!hist.length)return;const i=S.i;S=JSON.parse(hist.pop());S.i=i;stopTimer();save();render()}
 function winner(){return total('d')>=8?'d':total('g')>=8?'g':null}
 
@@ -495,7 +529,7 @@ function render(){
   else{const w=winner(),d=total('d'),g=total('g');
     h=w?`<div class="eyebrow">Endstand ${d} : ${g}</div><h1 class="${w}">${w==='d'?'Daniel gewinnt!':'Die Gäste gewinnen!'}</h1><h2>${w==='d'?'Einer gegen vierzig. Und der eine war besser.':'Vierzig gegen einen. Knapp gereicht.'}</h2>${logo('small')}`
        :`<div class="eyebrow">Stand ${d} : ${g}</div><h2>Noch ist nichts entschieden</h2><p class="mute">Es fehlen noch Spielergebnisse.</p>`}
-  $('#slide').innerHTML=h;paintTimer();confetti(sl.t==='final'&&winner());
+  $('#slide').innerHTML=h;paintTimer();confetti(sl.t==='final'&&winner());updateMusic();
 }
 
 /* ---------- Konfetti ---------- */
@@ -525,8 +559,6 @@ $('#b-close').addEventListener('click',()=>help(false));
 $('#b-reset').addEventListener('click',()=>{S=fresh();hist.length=0;stopTimer();save();help(false);render()});
 $('#wo-url').value=woBase();$('#wo-url').addEventListener('input',e=>{try{localStorage.setItem('sdd-wo-url',e.target.value.trim())}catch(x){}render()});
 $('#bz-url').value=stored('sdd-bz-url')||BUZZER_URL;$('#bz-url').addEventListener('input',e=>{try{localStorage.setItem('sdd-bz-url',e.target.value.trim())}catch(x){}render()});
-$('#mp3').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;
-  if(custom)custom.pause();custom=new Audio(URL.createObjectURL(f));custom.loop=true;custom.volume=.6;clearInterval(sched);setMusic(true)});
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.metaKey||e.ctrlKey||e.altKey)return;
   const k=e.key.toLowerCase();
@@ -540,7 +572,7 @@ document.addEventListener('keydown',e=>{
 let idleTO;function wake(){$('#bar').classList.remove('idle');clearTimeout(idleTO);idleTO=setTimeout(()=>$('#bar').classList.add('idle'),4000)}
 ['pointermove','pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,wake,{passive:true}));
 
-function start(data){S=valid(data)?data:(load()||fresh());render();wake();
+function start(data){S=valid(data)?data:(load()||fresh());buildSlots();render();wake();sndLoadAll();
   try{window.claude?.hot?.snapshot(()=>S)}catch(e){}}
 if(window.claude?.hot?.ready)window.claude.hot.ready(start);else start(window.claude?.hot?.data??{});
 </script>
