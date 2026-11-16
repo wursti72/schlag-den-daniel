@@ -101,10 +101,13 @@ onValue(ref(db, ".info/connected"), s => {
   }
   render();
 });
-onValue(bRef, s => { B = s.val() || {armed: false, winner: ""}; render(); });
+let dbErr = "";
+const fail = e => { dbErr = /permission/i.test(e && (e.code || e.message) || "") ? "Datenbank verweigert den Zugriff. In Firebase die Regeln der Realtime Database prüfen." : "Datenbank-Fehler: " + (e && e.message || e); render(); };
+window.addEventListener("unhandledrejection", e => fail(e.reason));
+onValue(bRef, s => { B = s.val() || {armed: false, winner: ""}; render(); }, fail);
 if (isLeiter) onValue(ref(db, `rooms/${room}/here`), s => { here = s.val() || {}; render(); });
 
-const arm = () => { audio(); clearTimeout(autoTO); set(bRef, {armed: true, winner: "", n: (B.n || 0) + 1}); };
+const arm = () => { audio(); clearTimeout(autoTO); set(bRef, {armed: true, winner: "", n: (B.n || 0) + 1}).catch(fail); };
 const lock = () => { clearTimeout(autoTO); set(bRef, {armed: false, winner: "", n: B.n || 0}); };
 function press() {
   if (!me || !B.armed || B.winner) return;
@@ -120,6 +123,7 @@ function press() {
 function render() {
   const w = B.winner || "";
   $("foot").hidden = false;
+  if (dbErr) { $("msg").textContent = dbErr; if (isLeiter) { $("lead").hidden = false; $("lbig").textContent = "Fehler"; $("lsub").textContent = dbErr; $("bArm").hidden = false; } else { $("buzz").hidden = false; $("buzz").textContent = "Fehler"; } return; }
   if (isLeiter) {
     $("who").textContent = "Spielleiter";
     $("lead").hidden = false; $("bArm").hidden = $("bLock").hidden = $("lauto").hidden = false;
