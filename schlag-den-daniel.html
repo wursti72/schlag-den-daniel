@@ -495,7 +495,7 @@ function render(){
   st.classList.toggle('nohud',sl.t==='title'||sl.t==='final');
   const gi=sl.g??-1;
   $('#hud').innerHTML=`<div class="side d">Daniel <b>${total('d')}</b></div><div class="pips">${GAMES.map((_,i)=>`<div class="pip ${S.wins[i]?'w'+S.wins[i]:''} ${i===gi?'cur':''}">${i+1}</div>`).join('')}</div><div class="side g"><b>${total('g')}</b> Gäste</div>`;
-  if(sl.t==='title')h=`<div class="beams"></div>`+logo('anim')+`<div class="logo" style="transform:none"><div class="sub">Einer gegen vierzig · Die Geburtstagsshow</div></div>`;
+  if(sl.t==='title')h=`<div class="beams"></div>`+logo('anim')+`<div class="logo" style="transform:none"><div class="sub">Einer gegen alle · Die Geburtstagsshow</div></div>`;
   else if(sl.t==='rules')h=`<div class="eyebrow">So läuft die Show</div><h2><span class="d">Daniel</span> gegen <span class="g">40 Gäste</span></h2><ul class="rules"><li>${N} Spiele. Vor jedem Spiel wird ein Herausforderer gesucht: Wer die Voraussetzung erfüllt, meldet sich.</li><li>Spiel 1 bringt 1 Punkt, Spiel 2 bringt 2 Punkte … Spiel ${N} bringt ${N} Punkte.</li><li>${TOTAL} Punkte sind im Topf. Wer ${WIN} hat, gewinnt die Show.${TOTAL%2?'':' Bei Gleichstand entscheidet ein Stechen.'}</li><li>Es geht um Ruhm und Ehre. Und sonst um nichts.</li></ul>`;
   else if(sl.t==='groups')h=`<div class="eyebrow">Die Spiele</div><h2 style="font-size:calc(var(--u)*4.6)">${N} Spiele, ${N} Herausforderer</h2>`+gcards(false);
   else if(sl.t==='card'){const G=GAMES[sl.g];h=`<div class="eyebrow">Spiel ${sl.g+1} von ${N}</div><h1>${G.name}</h1><div class="row"><span class="tag pt">${pts(sl.g)}</span><span class="tag gt">${condText(G)}</span><span class="tag">${G.mode}</span></div>`;
@@ -507,7 +507,7 @@ function render(){
     h=`<div class="eyebrow">Zwischenstand nach Spiel ${sl.g+1}</div><div class="duel" style="width:auto"><div class="col"><div class="lab d">Daniel</div><div class="num d">${d}</div></div><div class="vs">:</div><div class="col"><div class="lab g">Gäste</div><div class="num g">${g}</div></div></div>`+gcards(true)+
     `<p class="mute">${!S.wins[sl.g]?'Sieger fehlt noch: Taste D oder G.':w&&left?'Die Entscheidung ist gefallen. Die restlichen Spiele gehen um die Ehre.':tie()?'Gleichstand. Ein Stechen entscheidet.':w?'':WIN+' Punkte reichen zum Sieg.'}</p>`}
   else{const w=winner(),d=total('d'),g=total('g');
-    h=w?`<div class="eyebrow">Endstand ${d} : ${g}${S.tb?' · Sieg im Stechen':''}</div><h1 class="${w}">${w==='d'?'Daniel gewinnt!':'Die Gäste gewinnen!'}</h1><h2>${w==='d'?'Einer gegen vierzig. Und der eine war besser.':'Vierzig gegen einen. Knapp gereicht.'}</h2>${logo('small')}`
+    h=w?`<div class="eyebrow">Endstand ${d} : ${g}${S.tb?' · Sieg im Stechen':''}</div><h1 class="${w}">${w==='d'?'Daniel gewinnt!':'Die Gäste gewinnen!'}</h1><h2>${w==='d'?'Einer gegen alle. Und der eine war besser.':'Alle gegen einen. Knapp gereicht.'}</h2>${logo('small')}`
       :tie()?`<div class="eyebrow">Gleichstand ${d} : ${g} · Stechen</div><div class="q">${TIEBREAK[0]}</div><div class="a">${S.tbRev?TIEBREAK[1]:''}</div><p class="mute">Beide schätzen. Wer näher dran ist, gewinnt die Show.</p><p class="hint">Regie: Leertaste deckt auf, dann D oder G für den Sieger.</p>`
       :`<div class="eyebrow">Stand ${d} : ${g}</div><h2>Noch ist nichts entschieden</h2><p class="mute">Es fehlen noch Spielergebnisse.</p>`}
   $('#slide').innerHTML=h;paintTimer();confetti(sl.t==='final'&&winner());updateMusic();
