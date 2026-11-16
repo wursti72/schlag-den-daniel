@@ -63,8 +63,17 @@ p,li{font-size:calc(var(--u)*2.5);line-height:1.3;font-weight:500}
   padding:calc(var(--u)*.6) calc(var(--u)*3.4) calc(var(--u)*1);transform:skewX(-10deg);box-shadow:calc(var(--u)*1) calc(var(--u)*1) 0 var(--guests)}
 .logo .sub{margin-top:calc(var(--u)*2.6);font-family:var(--display);font-weight:700;font-size:calc(var(--u)*2.8);letter-spacing:.3em;text-transform:uppercase;color:var(--ink)}
 .logo.small{transform:rotate(-4deg) scale(.42)}
-@keyframes pop{from{transform:rotate(-4deg) scale(.9)}to{transform:rotate(-4deg) scale(1)}}
-.logo.anim{animation:pop .7s cubic-bezier(.2,1.6,.4,1)}
+.logo{position:relative;z-index:1}
+@keyframes pop{from{transform:rotate(-4deg) scale(.6);opacity:0}to{transform:rotate(-4deg) scale(1);opacity:1}}
+@keyframes float{0%,100%{transform:rotate(-4deg) translateY(0) scale(1)}50%{transform:rotate(-2deg) translateY(calc(var(--u)*-1.4)) scale(1.04)}}
+@keyframes sheen{0%{transform:translateX(-160%) skewX(-20deg)}55%,100%{transform:translateX(420%) skewX(-20deg)}}
+@keyframes shadow{0%,100%{box-shadow:calc(var(--u)*1) calc(var(--u)*1) 0 var(--guests)}50%{box-shadow:calc(var(--u)*1.8) calc(var(--u)*1.8) 0 var(--guests)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.logo.anim{animation:pop .7s cubic-bezier(.2,1.6,.4,1),float 5s ease-in-out .7s infinite}
+.logo.anim .name{position:relative;overflow:hidden;animation:shadow 5s ease-in-out .7s infinite}
+.logo.anim .name::after{content:"";position:absolute;top:0;bottom:0;left:0;width:28%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:sheen 3.6s ease-in-out 1s infinite}
+.beams{position:absolute;left:50%;top:50%;width:calc(var(--u)*170);height:calc(var(--u)*170);margin:calc(var(--u)*-85) 0 0 calc(var(--u)*-85);pointer-events:none;
+  background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.055) 0 7deg,transparent 7deg 22deg);-webkit-mask:radial-gradient(circle,#000 0,transparent 62%);mask:radial-gradient(circle,#000 0,transparent 62%);animation:spin 60s linear infinite}
 
 /* Listen und Karten */
 ul.rules{list-style:none;display:flex;flex-direction:column;gap:calc(var(--u)*1.3);text-align:left;max-width:calc(var(--u)*78)}
@@ -149,7 +158,7 @@ button.go{background:var(--gold);border-color:var(--gold);color:#2a1d00}
 .slot input{min-width:0;font:500 13px var(--body);color:var(--ink)}
 .slot .sname{grid-column:1;font-size:13px;color:var(--mute)}
 .slot button{grid-column:2;grid-row:2/4;padding:8px 10px}
-@media (prefers-reduced-motion:reduce){.logo.anim{animation:none}#bar{transition:none}}
+@media (prefers-reduced-motion:reduce){.logo.anim,.logo.anim .name,.logo.anim .name::after,.beams{animation:none}.logo.anim .name::after{display:none}#bar{transition:none}}
 </style>
 </head>
 <body>
@@ -486,7 +495,7 @@ function render(){
   st.classList.toggle('nohud',sl.t==='title'||sl.t==='final');
   const gi=sl.g??-1;
   $('#hud').innerHTML=`<div class="side d">Daniel <b>${total('d')}</b></div><div class="pips">${GAMES.map((_,i)=>`<div class="pip ${S.wins[i]?'w'+S.wins[i]:''} ${i===gi?'cur':''}">${i+1}</div>`).join('')}</div><div class="side g"><b>${total('g')}</b> Gäste</div>`;
-  if(sl.t==='title')h=logo('anim')+`<div class="logo" style="transform:none"><div class="sub">Einer gegen vierzig · Die Geburtstagsshow</div></div>`;
+  if(sl.t==='title')h=`<div class="beams"></div>`+logo('anim')+`<div class="logo" style="transform:none"><div class="sub">Einer gegen vierzig · Die Geburtstagsshow</div></div>`;
   else if(sl.t==='rules')h=`<div class="eyebrow">So läuft die Show</div><h2><span class="d">Daniel</span> gegen <span class="g">40 Gäste</span></h2><ul class="rules"><li>${N} Spiele. Vor jedem Spiel wird ein Herausforderer gesucht: Wer die Voraussetzung erfüllt, meldet sich.</li><li>Spiel 1 bringt 1 Punkt, Spiel 2 bringt 2 Punkte … Spiel ${N} bringt ${N} Punkte.</li><li>${TOTAL} Punkte sind im Topf. Wer ${WIN} hat, gewinnt die Show.${TOTAL%2?'':' Bei Gleichstand entscheidet ein Stechen.'}</li><li>Es geht um Ruhm und Ehre. Und sonst um nichts.</li></ul>`;
   else if(sl.t==='groups')h=`<div class="eyebrow">Die Spiele</div><h2 style="font-size:calc(var(--u)*4.6)">${N} Spiele, ${N} Herausforderer</h2>`+gcards(false);
   else if(sl.t==='card'){const G=GAMES[sl.g];h=`<div class="eyebrow">Spiel ${sl.g+1} von ${N}</div><h1>${G.name}</h1><div class="row"><span class="tag pt">${pts(sl.g)}</span><span class="tag gt">${condText(G)}</span><span class="tag">${G.mode}</span></div>`;
