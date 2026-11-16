@@ -130,6 +130,9 @@ const dot = (ll, c, t) => L.circleMarker(ll, {radius: 11, color: "#fff", weight:
 let dbErr = "";
 const fail = e => { dbErr = /permission/i.test(e && (e.code || e.message) || "") ? "Datenbank verweigert den Zugriff. In Firebase die Regeln der Realtime Database prüfen." : "Datenbank-Fehler: " + (e && e.message || e); render(); };
 window.addEventListener("unhandledrejection", e => fail(e.reason));
+let conn = null;
+onValue(ref(db, ".info/connected"), s => { conn = !!s.val(); render(); });
+setTimeout(() => { if (!conn) { conn = false; render(); } }, 6000);
 onValue(sRef, s => { S = s.val() || {}; render(); }, fail);
 onValue(gRef, s => { G = s.val() || {}; render(); if (isLeiter && S.phase === "guess" && G.p1 && G.p2) reveal(); }, fail);
 
@@ -205,7 +208,7 @@ function render() {
     if (key !== lastKey) { lastKey = key; map.fitBounds(pts, {padding: [60, 60], maxZoom: 6}); }
   }
   if (over) m += `   🏆 ${s1 > s2 ? N.p1 : N.p2} gewinnt!`;
-  $("q").textContent = q; $("msg").textContent = dbErr || m;
+  $("q").textContent = q; $("msg").textContent = dbErr || (conn === false ? "Keine Verbindung zur Datenbank. Internet prüfen. Sonst gibt es die Firebase-Datenbank nicht mehr." : m);
 
   $("bSubmit").hidden = !me; $("bSubmit").disabled = !(me && ph === "guess" && mine && !G[me]);
   [["bNext"], ["bReveal"], ["bP1"], ["bP2"], ["bReset"]].forEach(([b]) => $(b).hidden = !isLeiter);
@@ -215,7 +218,7 @@ function render() {
 }
 
 $("bSubmit").onclick = () => { if (mine) set(ref(db, `rooms/${room}/guess/${me}`), mine).catch(fail); };
-$("bNext").onclick = () => nextRound().catch(fail);
+$("bNext").onclick = () => { const t = setTimeout(() => fail({message: "Die Datenbank antwortet nicht."}), 6000); nextRound().then(() => { clearTimeout(t); if (dbErr) { dbErr = ""; render(); } }, e => { clearTimeout(t); fail(e); }); };
 $("bReveal").onclick = reveal;
 $("bP1").onclick = () => addPoint("p1");
 $("bP2").onclick = () => addPoint("p2");
