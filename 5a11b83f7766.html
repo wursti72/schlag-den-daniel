@@ -15,6 +15,8 @@ html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:
 #app{display:flex;flex-direction:column;height:100%}
 header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;background:var(--card);border-bottom:3px solid var(--gold)}
 #q{font-family:var(--display);font-size:clamp(1.5rem,4.2vw,3.4rem);font-weight:900;letter-spacing:.03em;text-transform:uppercase;line-height:1}
+#timer{font-family:var(--display);font-weight:900;font-size:clamp(2rem,6vw,4.4rem);line-height:.9;color:var(--gold);font-variant-numeric:tabular-nums;min-width:2ch;text-align:center}
+#timer.low{color:var(--p1)}
 #score{font-family:var(--display);font-size:clamp(1.3rem,3.6vw,3rem);font-weight:900;white-space:nowrap;text-transform:uppercase;letter-spacing:.04em;line-height:1}
 #map{flex:1;min-height:0;background:#0a1a3a}
 footer{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 16px;background:var(--card)}
@@ -31,13 +33,14 @@ button:focus-visible,a:focus-visible{outline:3px solid #fff;outline-offset:2px}
 </head>
 <body>
 <div id="app">
-  <header><div id="q">Wo ist?</div><div id="score"></div></header>
+  <header><div id="q">Wo ist?</div><div id="timer" hidden></div><div id="score"></div></header>
   <div id="pick" hidden></div>
   <div id="map"></div>
   <footer>
     <div id="msg"></div>
     <button id="bSubmit" hidden>Tipp abgeben</button>
     <button id="bNext" hidden>Nächste Runde</button>
+    <button id="bTimer" hidden>Timer starten</button>
     <button id="bReveal" class="s" hidden>Jetzt aufdecken</button>
     <button id="bP1" class="s" hidden>+1 Daniel</button>
     <button id="bP2" class="s" hidden>+1 Gäste</button>
@@ -70,6 +73,7 @@ const PLACES = [
   {n:"New York",k:"Stadt",lat:40.71,lng:-74.01},
   {n:"Sevilla",k:"Stadt",lat:37.39,lng:-5.99}
 ];
+const TIMER_SECONDS = 20; // Zeit zum Tippen, wenn der Spielleiter den Timer startet
 const WIN_POINTS = 4; // Best of 7
 
 /* ===== Ab hier nichts ändern nötig ===== */
@@ -97,6 +101,29 @@ if (Object.values(CONFIG).some(v => v === "HIER")) {
 const db = getDatabase(initializeApp(CONFIG));
 const sRef = ref(db, `rooms/${room}/state`), gRef = ref(db, `rooms/${room}/guess`);
 let S = {}, G = {}, mine = null, lastKey = "", lastRound = -1, busy = false;
+let offset = 0, shownSec = -1, ac = null;
+onValue(ref(db, ".info/serverTimeOffset"), s => { offset = s.val() || 0; });
+const now = () => Date.now() + offset;
+const left = () => S.phase === "guess" && S.deadline ? Math.max(0, (S.deadline - now()) / 1000) : null;
+const timeUp = () => { const l = left(); return l !== null && l <= 0; };
+function beep(f, d) { if (!ac) return; try { const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime; o.type = "square"; o.frequency.value = f; g.gain.setValueAtTime(.25, t); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + d + .02); } catch (e) {} }
+function startTimer() {
+  if (!isLeiter || S.phase !== "guess") return;
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); } catch (e) {}
+  update(sRef, {deadline: now() + TIMER_SECONDS * 1000}).catch(fail);
+}
+setInterval(() => {
+  const l = left(), el = $("timer");
+  el.hidden = l === null;
+  if (l === null) { shownSec = -1; return; }
+  const sec = Math.ceil(l);
+  el.textContent = sec; el.classList.toggle("low", sec <= 5);
+  if (sec !== shownSec) {
+    if (isLeiter && sec > 0 && sec <= 5 && shownSec !== -1) beep(1000, .06);
+    if (sec === 0 && shownSec > 0) { if (isLeiter) { beep(110, .6); reveal(); } render(); }
+    shownSec = sec;
+  }
+}, 200);
 
 const WORLD = [[-58, -170], [80, 180]];
 const map = L.map("map", {minZoom: 0, maxZoom: 8, zoomSnap: .5,
@@ -138,7 +165,7 @@ onValue(sRef, s => { S = s.val() || {}; render(); }, fail);
 onValue(gRef, s => { G = s.val() || {}; render(); if (isLeiter && S.phase === "guess" && G.p1 && G.p2) reveal(); }, fail);
 
 map.on("click", e => {
-  if (!me || S.phase !== "guess" || G[me]) return;
+  if (!me || S.phase !== "guess" || G[me] || timeUp()) return;
   mine = {lat: e.latlng.lat, lng: wrap(e.latlng.lng)};
   render();
 });
@@ -155,7 +182,7 @@ async function nextRound() {
   await remove(gRef);
   await update(sRef, {phase: "guess", idx: i, name: PLACES[i].n, ask: PLACES[i].q || null, kind: PLACES[i].k, probe: !!PLACES[i].probe,
     used: reset ? [0, i] : [...used, i],
-    round: (S.round || 0) + 1, reveal: null, score: {p1: (S.score || {}).p1 || 0, p2: (S.score || {}).p2 || 0}});
+    round: (S.round || 0) + 1, reveal: null, deadline: null, score: {p1: (S.score || {}).p1 || 0, p2: (S.score || {}).p2 || 0}});
 }
 
 async function reveal() {
@@ -167,7 +194,7 @@ async function reveal() {
   const w = probe ? "" : d1 < d2 ? "p1" : d2 < d1 ? "p2" : "";
   const sc = {p1: (S.score || {}).p1 || 0, p2: (S.score || {}).p2 || 0};
   if (w) sc[w]++;
-  await update(sRef, {phase: "reveal", score: sc, reveal: {lat: t.lat, lng: t.lng, d1: Math.round(d1), d2: Math.round(d2), w, probe}});
+  await update(sRef, {phase: "reveal", deadline: null, score: sc, reveal: {lat: t.lat, lng: t.lng, d1: Math.round(d1), d2: Math.round(d2), w, probe}});
   busy = false;
 }
 
@@ -211,16 +238,20 @@ function render() {
   if (over) m += `   🏆 ${s1 > s2 ? N.p1 : N.p2} gewinnt!`;
   $("q").textContent = q; $("msg").textContent = dbErr || (conn === false ? "Keine Verbindung zur Datenbank. Internet prüfen. Sonst gibt es die Firebase-Datenbank nicht mehr." : m);
 
-  $("bSubmit").hidden = !me; $("bSubmit").disabled = !(me && ph === "guess" && mine && !G[me]);
+  $("bSubmit").hidden = !me; $("bSubmit").disabled = !(me && ph === "guess" && mine && !G[me] && !timeUp());
+  if (me && ph === "guess" && !G[me] && timeUp()) $("msg").textContent = "Die Zeit ist um.";
+  $("bTimer").hidden = !isLeiter; $("bTimer").disabled = !(ph === "guess" && !S.deadline);
   [["bNext"], ["bReveal"], ["bP1"], ["bP2"], ["bReset"]].forEach(([b]) => $(b).hidden = !isLeiter);
   $("bNext").disabled = ph === "guess" || over;
   $("bReveal").disabled = !(ph === "guess" && (G.p1 || G.p2));
   $("bP1").textContent = `+1 ${N.p1}`; $("bP2").textContent = `+1 ${N.p2}`;
 }
 
-$("bSubmit").onclick = () => { if (mine) set(ref(db, `rooms/${room}/guess/${me}`), mine).catch(fail); };
+$("bSubmit").onclick = () => { if (mine && !timeUp()) set(ref(db, `rooms/${room}/guess/${me}`), mine).catch(fail); };
 $("bNext").onclick = () => { const t = setTimeout(() => fail({message: "Die Datenbank antwortet nicht."}), 6000); nextRound().then(() => { clearTimeout(t); if (dbErr) { dbErr = ""; render(); } }, e => { clearTimeout(t); fail(e); }); };
 $("bReveal").onclick = reveal;
+$("bTimer").onclick = startTimer;
+if (isLeiter) document.addEventListener("keydown", e => { if ((e.key === "t" || e.key === "T") && !e.metaKey && !e.ctrlKey) startTimer(); });
 $("bP1").onclick = () => addPoint("p1");
 $("bP2").onclick = () => addPoint("p2");
 $("bReset").onclick = () => { if (confirm("Spiel wirklich zurücksetzen?")) remove(ref(db, `rooms/${room}`)); };
