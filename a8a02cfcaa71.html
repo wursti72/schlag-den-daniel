@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow,noarchive">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Schlag den Daniel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -248,9 +249,9 @@ button.go{background:var(--gold);border-color:var(--gold);color:#2a1d00}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 /* Adresse, unter der wo-ist.html im Internet liegt (für die QR-Codes in Spiel 3). Lässt sich auch im Regiezettel eintragen. */
-const WO_URL='https://wursti72.github.io/schlag-den-daniel/wo-ist.html';
+const WO_URL='https://wursti72.github.io/schlag-den-daniel/5a11b83f7766.html';
 /* Adresse von buzzer.html (QR-Codes in Spiel 1). Leer: derselbe Ordner wie wo-ist.html. */
-const BUZZER_URL='https://wursti72.github.io/schlag-den-daniel/buzzer.html';
+const BUZZER_URL='https://wursti72.github.io/schlag-den-daniel/954ff6c208d2.html';
 /* ---------- Inhalte ---------- */
 const GAMES=[
  /* cond = Voraussetzung, die der Herausforderer erfüllen muss, z. B. 'wer im selben Jahr geboren ist wie Daniel'. Leer: „Herausforderer gesucht“. */
@@ -481,9 +482,9 @@ function play(g){
   return head+`<div class="duel"><div class="col dside"><div class="lab d">Daniel</div><div class="num d">${p.d}</div><div class="cups">${cups(p.d)}</div></div><div class="vs">:</div><div class="col gside"><div class="lab g">Gäste</div><div class="num g">${p.g}</div><div class="cups">${cups(p.g)}</div></div></div>`+wonBanner(g);
 }
 function stored(k){try{return (localStorage.getItem(k)||'').trim()}catch(e){return ''}}
-function woBase(){return stored('sdd-wo-url')||WO_URL.trim()}
-function bzBase(){const b=stored('sdd-bz-url')||BUZZER_URL.trim();if(b)return b;
-  const w=woBase().split(/[?#]/)[0];return /^https?:\/\/.+\//i.test(w)?w.slice(0,w.lastIndexOf('/')+1)+'buzzer.html':''}
+function woBase(){return stored('sdd-wo-url-2')||WO_URL.trim()}
+function bzBase(){const b=stored('sdd-bz-url-2')||BUZZER_URL.trim();if(b)return b;
+  const w=woBase().split(/[?#]/)[0];return /^https?:\/\/.+\//i.test(w)?w.slice(0,w.lastIndexOf('/')+1)+'954ff6c208d2.html':''}
 function qr(b,r){if(!/^https?:\/\//i.test(b)||typeof qrcode!=='function')return '';
   try{const q=qrcode(0,'M');q.addData(b.split('#')[0]+(b.includes('?')?'&':'?')+'r='+r);q.make();return q.createDataURL(8,16)}catch(e){return ''}}
 const woQR=r=>qr(woBase(),r), bzQR=r=>qr(bzBase(),r);
@@ -539,8 +540,8 @@ const act={next(){audio();advance()},back(){go(-1)},d(){audio();award('d')},g(){
 ['back','next','d','g','undo','timer','music','full','help'].forEach(k=>$('#b-'+k).addEventListener('click',e=>{act[k]();e.currentTarget.blur()}));
 $('#b-close').addEventListener('click',()=>help(false));
 $('#b-reset').addEventListener('click',()=>{S=fresh();hist.length=0;stopTimer();save();help(false);render()});
-$('#wo-url').value=woBase();$('#wo-url').addEventListener('input',e=>{try{localStorage.setItem('sdd-wo-url',e.target.value.trim())}catch(x){}render()});
-$('#bz-url').value=stored('sdd-bz-url')||BUZZER_URL;$('#bz-url').addEventListener('input',e=>{try{localStorage.setItem('sdd-bz-url',e.target.value.trim())}catch(x){}render()});
+$('#wo-url').value=woBase();$('#wo-url').addEventListener('input',e=>{try{localStorage.setItem('sdd-wo-url-2',e.target.value.trim())}catch(x){}render()});
+$('#bz-url').value=stored('sdd-bz-url-2')||BUZZER_URL;$('#bz-url').addEventListener('input',e=>{try{localStorage.setItem('sdd-bz-url-2',e.target.value.trim())}catch(x){}render()});
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.metaKey||e.ctrlKey||e.altKey)return;
   const k=e.key.toLowerCase();
