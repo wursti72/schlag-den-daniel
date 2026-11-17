@@ -128,6 +128,8 @@ ul.rules li::before{content:"";position:absolute;left:0;top:.38em;width:calc(var
 .qrs.sm img{width:calc(var(--u)*13);height:calc(var(--u)*13)}.qrs.sm .lab{font-size:calc(var(--u)*2.4)}
 .qrs .dq img{outline:calc(var(--u)*.6) solid var(--daniel)}.qrs .gq img{outline:calc(var(--u)*.6) solid var(--guests)}
 #help input[type=url]{width:100%;font:500 15px var(--body);padding:10px;background:var(--night-2);color:var(--ink);border:1px solid var(--line);border-radius:4px}
+.tips{display:flex;gap:calc(var(--u)*6);justify-content:center;font-family:var(--display);font-weight:900;font-size:calc(var(--u)*3.6);text-transform:uppercase;letter-spacing:.03em}
+.tips b{font-size:1.4em;color:var(--ink);margin-left:.3em;text-transform:none}
 #corner{position:absolute;right:calc(var(--u)*2.5);bottom:calc(var(--u)*2);z-index:4;font-family:var(--display);font-weight:900;font-size:calc(var(--u)*5);color:var(--gold);font-variant-numeric:tabular-nums;display:none}
 #fx{position:absolute;inset:0;pointer-events:none;z-index:5;width:100%;height:100%}
 
@@ -197,7 +199,7 @@ button.go{background:var(--gold);border-color:var(--gold);color:#2a1d00}
       <ul>
         <li>1 Tisch vor der Leinwand, Laptop mit Lautsprechern</li>
         <li>Buzzer: 2 Handys mit Internet und die Datei buzzer.html. Als Reserve ohne Internet 1 Kochlöffel (Spiel 1)</li>
-        <li>Papier und 2 dicke Stifte (Spiel 2 und Stechen)</li>
+        <li>Schätzen: 2 Handys mit Internet. Als Reserve Papier und 2 dicke Stifte (Spiel 2 und Stechen)</li>
         <li>2 Handys mit Internet und die Datei „Wo ist?“ (Spiel 3)</li>
         <li>4 Plastikbecher, 2 davon Reserve (Spiel 4)</li>
       </ul>
@@ -206,6 +208,7 @@ button.go{background:var(--gold);border-color:var(--gold);color:#2a1d00}
       <h4>Vor der Show</h4>
       <ul>
         <li>„Wo ist?“ (Spiel 3) läuft in einer eigenen Datei und braucht Internet. Am Laptop in einem zweiten Browser-Tab als Spielleiter öffnen, auf zwei Handys als Spieler 1 (Daniel) und Spieler 2 (Gäste). Daniel ist Orange, die Gäste sind Türkis.</li>
+        <li>Schätzen (Spiel 2): Daniel und der Herausforderer scannen die QR-Codes auf der Titelkarte. Mit der Leertaste startet die Frage, dann können beide 30 Sekunden lang tippen. Die Show zeigt, wer abgegeben hat, und blendet beide Tipps bei der Auflösung ein. Ohne Internet: Papier.</li>
         <li>Buzzer (Spiel 1): buzzer.html am Laptop in einem weiteren Tab als Spielleiter öffnen und einmal „Buzzer freigeben“ klicken. Danach zurück zur Show: Der Ton läuft im Hintergrund weiter, zwei hohe Töne heißt Daniel, ein tiefer Ton heißt Gäste. Nach 5 Sekunden ist der Buzzer wieder frei.</li>
         <li>Im Spiel 3 zum Karten-Tab wechseln, danach zurück zur Show und <kbd>D</kbd> oder <kbd>G</kbd> für den Sieger drücken.</li>
         <li>Vor jedem Spiel die Voraussetzung vorlesen. Wer sie erfüllt, meldet sich; bei mehreren entscheidet, wer zuerst die Hand oben hat.</li>
@@ -251,6 +254,8 @@ button.go{background:var(--gold);border-color:var(--gold);color:#2a1d00}
 /* Adresse, unter der wo-ist.html im Internet liegt (für die QR-Codes in Spiel 3). Lässt sich auch im Regiezettel eintragen. */
 const WO_URL='https://wursti72.github.io/schlag-den-daniel/5a11b83f7766.html';
 /* Adresse von buzzer.html (QR-Codes in Spiel 1). Leer: derselbe Ordner wie wo-ist.html. */
+/* Adresse der Handy-Seite fürs Schätzen (QR-Codes in Spiel 2) */
+const SCHAETZ_URL='https://wursti72.github.io/schlag-den-daniel/3fc2330a91ba.html';
 const BUZZER_URL='https://wursti72.github.io/schlag-den-daniel/954ff6c208d2.html';
 /* ---------- Inhalte ---------- */
 const GAMES=[
@@ -258,7 +263,7 @@ const GAMES=[
  {type:'quiz',name:'Schnellquiz',cond:'',mode:'1 Gast gegen Daniel',target:4,timer:10,
   rules:['Wer die Antwort weiß, drückt den Buzzer auf dem Handy. Ohne Internet: Kochlöffel aus der Tischmitte schnappen.','Richtige Antwort: 1 Punkt.','Falsche Antwort: Der Punkt geht an den Gegner.','Höchstens 7 Fragen. Wer zuerst 4 Punkte hat, gewinnt das Spiel.']},
  {type:'guess',name:'Schätzen',cond:'',mode:'1 Gast gegen Daniel',target:3,timer:30,
-  rules:['Eine Schätzfrage erscheint. Beide haben 30 Sekunden Zeit.','Dann halten beide ihre Zahl auf Papier hoch.','Wer näher dran ist, bekommt den Punkt.','Wer zuerst 3 Punkte hat, gewinnt.']},
+  rules:['Eine Schätzfrage erscheint. Beide haben 30 Sekunden Zeit.','Beide tippen ihre Schätzung aufs Handy und schicken sie ab. Ohne Internet: auf Papier schreiben und hochhalten.','Wer näher dran ist, bekommt den Punkt.','Wer zuerst 3 Punkte hat, gewinnt.']},
  {type:'map',name:'Wo ist?',cond:'',mode:'1 Gast gegen Daniel',target:4,timer:0,
   rules:['Auf der Leinwand erscheint ein Ort. Daniel und sein Herausforderer tippen auf ihrem Handy auf die Weltkarte, wo er liegt.','Sind beide Tipps abgegeben, deckt die Karte auf. Wer näher dran ist, bekommt den Punkt.','Zuerst eine Proberunde, die nicht zählt.','Wer zuerst 4 Punkte hat, gewinnt.']},
  {type:'flip',name:'Becher-Flip',cond:'',mode:'1 Gast gegen Daniel',target:6,timer:0,
@@ -436,7 +441,7 @@ function award(side){
   if(sl.t!=='play'||S.wins[sl.g])return;
   const g=sl.g,p=S.ps[g],ty=GAMES[g].type;mark();p[side]++;stopTimer();
   if(ty==='quiz')p.rev=true;
-  if(ty==='guess')p.ph='reveal';
+  if(ty==='guess'){if(p.ph==='run')estClose();p.ph='reveal'}
   if(ty==='map')p[side]=GAMES[g].target; // Wo ist? läuft im Karten-Tab: ein Tastendruck setzt den Sieger
   if(p[side]>=GAMES[g].target){S.wins[g]=side;playWin()}else sfx.point();
   save();render();
@@ -448,8 +453,8 @@ function advance(){
     const g=sl.g,p=S.ps[g],ty=GAMES[g].type;
     if(ty==='quiz'){if(!p.rev){p.rev=true;sfx.reveal()}else{p.q=(p.q+1)%QUIZ.length;p.rev=false}}
     else if(ty==='guess'){
-      if(p.ph==='q'){p.ph='run';save();render();startTimer(GAMES[g].timer,()=>render());return}
-      else if(p.ph==='run'){stopTimer();p.ph='reveal';sfx.reveal()}
+      if(p.ph==='q'){p.ph='run';estOpen(GUESS[p.q][0]);save();render();startTimer(GAMES[g].timer,()=>{estClose();render()});return}
+      else if(p.ph==='run'){stopTimer();estClose();p.ph='reveal';sfx.reveal()}
       else{p.q=(p.q+1)%GUESS.length;p.ph='q'}
     }
     else return;
@@ -473,7 +478,7 @@ function play(g){
   if(ty==='quiz'){const q=QUIZ[p.q];
     return head+`<div class="q">${q[0]}</div><div class="a">${p.rev?q[1]:''}</div>`+(wonBanner(g)||mini(g))}
   if(ty==='guess'){const q=GUESS[p.q];
-    return head+`<div class="q">${q[0]}</div>`+(p.ph==='reveal'?`<div class="a">${q[1]}</div>`:timerHTML())+(wonBanner(g)||mini(g))}
+    return head+`<div class="q">${q[0]}</div>`+(p.ph==='reveal'?`<div class="a">${q[1]}</div>`+estTips():timerHTML()+(p.ph==='run'?estStatus():''))+(wonBanner(g)||mini(g))}
   if(ty==='map'){
     const qa=woQR(1),qb=woQR(2),hint=`<p class="hint">Regie: jetzt zum Karten-Tab wechseln. Nach dem Spiel hier D oder G für den Sieger drücken.</p>`;
     if(!S.wins[g]&&qa&&qb)return head+`<h2>Wo ist …? Scannen und mitspielen</h2><div class="qrs"><div class="qr dq"><img alt="QR-Code für Daniel" src="${qa}"><div class="lab d">Daniel</div></div><div class="qr gq"><img alt="QR-Code für den Herausforderer" src="${qb}"><div class="lab g">Gäste</div></div></div>`+hint;
@@ -487,7 +492,7 @@ function bzBase(){const b=stored('sdd-bz-url-2')||BUZZER_URL.trim();if(b)return 
   const w=woBase().split(/[?#]/)[0];return /^https?:\/\/.+\//i.test(w)?w.slice(0,w.lastIndexOf('/')+1)+'954ff6c208d2.html':''}
 function qr(b,r){if(!/^https?:\/\//i.test(b)||typeof qrcode!=='function')return '';
   try{const q=qrcode(0,'M');q.addData(b.split('#')[0]+(b.includes('?')?'&':'?')+'r='+r);q.make();return q.createDataURL(8,16)}catch(e){return ''}}
-const woQR=r=>qr(woBase(),r), bzQR=r=>qr(bzBase(),r);
+const woQR=r=>qr(woBase(),r), bzQR=r=>qr(bzBase(),r), esQR=r=>qr(SCHAETZ_URL.trim(),r);
 const pts=i=>(i+1)+(i?' Punkte':' Punkt');
 function gcards(showRes){return `<div class="groups" style="grid-template-columns:repeat(${N},minmax(0,1fr))">${GAMES.map((G,i)=>{const w=S.wins[i];
   return `<div class="gcard ${w?'w'+w:''}"><div class="n">${i+1}</div><div class="gn">${G.name}</div><div class="sp">${condText(G)}</div>${showRes?`<div class="res ${w||'mute'}">${w?(w==='d'?'Daniel':'Gäste')+' +'+(i+1):pts(i)}</div>`:`<div class="res gold">${pts(i)}</div>`}</div>`}).join('')}</div>`}
@@ -501,8 +506,8 @@ function render(){
   else if(sl.t==='rules')h=`<div class="eyebrow">So läuft die Show</div><h2><span class="d">Daniel</span> gegen <span class="g">40 Gäste</span></h2><ul class="rules"><li>${N} Spiele. Vor jedem Spiel wird ein Herausforderer gesucht: Wer die Voraussetzung erfüllt, meldet sich.</li><li>Spiel 1 bringt 1 Punkt, Spiel 2 bringt 2 Punkte … Spiel ${N} bringt ${N} Punkte.</li><li>${TOTAL} Punkte sind im Topf. Wer ${WIN} hat, gewinnt die Show.${TOTAL%2?'':' Bei Gleichstand entscheidet ein Stechen.'}</li><li>Es geht um Ruhm und Ehre. Und sonst um nichts.</li></ul>`;
   else if(sl.t==='groups')h=`<div class="eyebrow">Die Spiele</div><h2 style="font-size:calc(var(--u)*4.6)">${N} Spiele, ${N} Herausforderer</h2>`+gcards(false);
   else if(sl.t==='card'){const G=GAMES[sl.g];h=`<div class="eyebrow">Spiel ${sl.g+1} von ${N}</div><h1>${G.name}</h1><div class="row"><span class="tag pt">${pts(sl.g)}</span><span class="tag gt">${condText(G)}</span><span class="tag">${G.mode}</span></div>`;
-    const a=G.type==='quiz'?bzQR(1):'',b=G.type==='quiz'?bzQR(2):'';
-    if(a&&b)h+=`<div class="qrs sm"><div class="qr dq"><img alt="Buzzer-QR-Code für Daniel" src="${a}"><div class="lab d">Buzzer Daniel</div></div><div class="qr gq"><img alt="Buzzer-QR-Code für den Herausforderer" src="${b}"><div class="lab g">Buzzer Gäste</div></div></div>`}
+    const f=G.type==='quiz'?bzQR:G.type==='guess'?esQR:null,a=f?f(1):'',b=f?f(2):'',lb=G.type==='quiz'?'Buzzer':'Schätzen';
+    if(a&&b)h+=`<div class="qrs sm"><div class="qr dq"><img alt="QR-Code für Daniel" src="${a}"><div class="lab d">${lb} Daniel</div></div><div class="qr gq"><img alt="QR-Code für den Herausforderer" src="${b}"><div class="lab g">${lb} Gäste</div></div></div>`}
   else if(sl.t==='how'){const G=GAMES[sl.g];h=`<div class="eyebrow">Spiel ${sl.g+1} · ${G.name}</div><h2>So geht’s</h2><ul class="rules">${G.rules.map(r=>`<li>${r}</li>`).join('')}</ul>`}
   else if(sl.t==='play')h=play(sl.g);
   else if(sl.t==='score'){const d=total('d'),g=total('g'),w=winner(),left=sl.g<N-1;
@@ -514,6 +519,34 @@ function render(){
       :`<div class="eyebrow">Stand ${d} : ${g}</div><h2>Noch ist nichts entschieden</h2><p class="mute">Es fehlen noch Spielergebnisse.</p>`}
   $('#slide').innerHTML=h;paintTimer();confetti(sl.t==='final'&&winner());updateMusic();
 }
+
+/* ---------- Schätzen per Handy ---------- */
+const FB_CONFIG={apiKey: "AIzaSyAr96tAGZyNnHRbanOYOtiOwnTvTHSCk9Y",
+  authDomain: "schlag-den-daniel.firebaseapp.com",
+  databaseURL: "https://schlag-den-daniel-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "schlag-den-daniel",
+  appId: "1:807315940901:web:095f46aac81d70fbe001cc"};
+const EST_ROOM='schlag-den-daniel-schaetzen';
+const EST={db:null,fb:null,ans:{},round:0};
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function estInit(){
+  try{
+    const [app,f]=await Promise.all([import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),import('https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js')]);
+    const db=f.getDatabase(app.initializeApp(FB_CONFIG,'show'));
+    f.onValue(f.ref(db,`rooms/${EST_ROOM}/state`),s=>{const v=s.val()||{};EST.round=v.round||0});
+    f.onValue(f.ref(db,`rooms/${EST_ROOM}/ans`),s=>{EST.ans=s.val()||{};if(cur().t==='play'&&GAMES[cur().g].type==='guess')render()});
+    EST.db=db;EST.fb=f;
+  }catch(e){EST.db=null}
+}
+function estRef(k){return EST.fb.ref(EST.db,`rooms/${EST_ROOM}/${k}`)}
+function estOpen(q){if(!EST.db)return;const r=EST.round+1;EST.round=r;EST.ans={};
+  EST.fb.remove(estRef('ans')).then(()=>EST.fb.set(estRef('state'),{round:r,open:true,q})).catch(()=>{})}
+function estClose(){if(EST.db)EST.fb.update(estRef('state'),{open:false}).catch(()=>{})}
+const estVal=k=>{const x=EST.ans[k];return x&&x.r===EST.round?x.v:null};
+function estStatus(){if(!EST.db)return '';const m=k=>estVal(k)!==null?'✓ abgegeben':'…';
+  return `<p class="hint">Handy-Tipps: <span class="d">Daniel ${m('p1')}</span> · <span class="g">Gäste ${m('p2')}</span></p>`}
+function estTips(){if(!EST.db)return '';const a=estVal('p1'),b=estVal('p2');if(a===null&&b===null)return '';
+  return `<div class="tips"><span class="d">Daniel<b>${a===null?'–':esc(a)}</b></span><span class="g">Gäste<b>${b===null?'–':esc(b)}</b></span></div>`}
 
 /* ---------- Konfetti ---------- */
 let fxOn=false,parts=[];
@@ -555,7 +588,7 @@ document.addEventListener('keydown',e=>{
 let idleTO;function wake(){$('#bar').classList.remove('idle');clearTimeout(idleTO);idleTO=setTimeout(()=>$('#bar').classList.add('idle'),4000)}
 ['pointermove','pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,wake,{passive:true}));
 
-function start(data){S=valid(data)?data:(load()||fresh());buildSlots();render();wake();sndLoadAll();
+function start(data){S=valid(data)?data:(load()||fresh());buildSlots();render();wake();sndLoadAll();estInit();
   try{window.claude?.hot?.snapshot(()=>S)}catch(e){}}
 if(window.claude?.hot?.ready)window.claude.hot.ready(start);else start(window.claude?.hot?.data??{});
 </script>

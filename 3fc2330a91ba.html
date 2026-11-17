@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Schätzen</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=Barlow:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0b1030;--card:#161d4d;--line:#2c3577;--fg:#f3f1ea;--mute:#a3a9d6;--gold:#ffd24a;--p1:#ff7a1a;--p2:#2bdccb;--display:"Big Shoulders Display","Arial Narrow",Impact,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--fg);font-family:"Barlow","Segoe UI",system-ui,sans-serif;font-weight:500}
+#app{display:flex;flex-direction:column;min-height:100%}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border-bottom:3px solid var(--c,var(--gold));font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:.04em;font-size:1.6rem;line-height:1}
+#who{color:var(--c,var(--mute))}
+main{flex:1;display:flex;flex-direction:column;gap:18px;padding:20px 16px 32px;max-width:520px;width:100%;margin:0 auto}
+.eyebrow{font-family:var(--display);font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);font-size:1rem}
+#q{font-family:var(--display);font-weight:900;font-size:clamp(1.8rem,8vw,2.6rem);line-height:1.02;text-wrap:balance}
+#msg{font-size:1.1rem;color:var(--mute)}
+form{display:flex;flex-direction:column;gap:12px}
+input{width:100%;font:700 2rem/1.1 "Barlow",system-ui,sans-serif;padding:14px 16px;border-radius:6px;border:2px solid var(--line);background:#fff;color:#0b1030}
+input:focus{outline:3px solid var(--c,var(--gold));outline-offset:2px}
+.row{display:flex;gap:10px}
+button{font:inherit;font-weight:700;font-size:1.25rem;padding:16px;border:0;border-radius:6px;cursor:pointer}
+#send{flex:1;background:var(--c,var(--gold));color:#0b1030}
+#kb{background:var(--card);color:var(--fg);box-shadow:inset 0 0 0 1px var(--line);font-size:1rem}
+button:disabled{opacity:.4}
+button:focus-visible,a:focus-visible{outline:3px solid #fff;outline-offset:2px}
+#done{padding:22px 16px;border-radius:8px;background:var(--card);border-left:8px solid var(--c,var(--gold))}
+#done .v{font-family:var(--display);font-weight:900;font-size:3rem;line-height:1;color:var(--c,var(--gold));word-break:break-word}
+#pick{display:grid;gap:12px}
+#pick a{display:block;padding:18px;border-radius:6px;background:var(--card);color:var(--fg);text-decoration:none;font-family:var(--display);font-weight:900;font-size:1.8rem;text-transform:uppercase;border-left:8px solid var(--gold)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+  <header><div>Schätzen</div><div id="who"></div></header>
+  <main>
+    <div id="pick" hidden></div>
+    <div id="qbox" hidden><div class="eyebrow" id="eb">Frage</div><div id="q"></div></div>
+    <form id="form" hidden autocomplete="off">
+      <label for="val" class="eyebrow">Deine Schätzung</label>
+      <input id="val" inputmode="decimal" enterkeyhint="send" maxlength="40" placeholder="Zahl eingeben">
+      <div class="row"><button type="button" id="kb">ABC</button><button type="submit" id="send">Absenden</button></div>
+    </form>
+    <div id="done" hidden><div class="eyebrow">Abgegeben</div><div class="v" id="dv"></div><p id="dm" style="margin-top:8px;color:var(--mute)">Warte auf die Auflösung auf der Leinwand.</p></div>
+    <p id="msg"></p>
+  </main>
+</div>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getDatabase,ref,onValue,set} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* Firebase-Werte des Projekts schlag-den-daniel */
+const CONFIG = {
+  apiKey: "AIzaSyAr96tAGZyNnHRbanOYOtiOwnTvTHSCk9Y",
+  authDomain: "schlag-den-daniel.firebaseapp.com",
+  databaseURL: "https://schlag-den-daniel-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "schlag-den-daniel",
+  appId: "1:807315940901:web:095f46aac81d70fbe001cc"
+};
+
+const $ = id => document.getElementById(id);
+const P = new URLSearchParams(location.search);
+const room = (P.get("raum") || "schlag-den-daniel-schaetzen").replace(/[^a-z0-9_-]/gi, "");
+const me = P.get("r") === "1" ? "p1" : P.get("r") === "2" ? "p2" : null;
+const NAME = {p1: "Daniel", p2: "Gäste"};
+
+if (!me) {
+  $("pick").hidden = false;
+  $("pick").innerHTML = `<a href="?r=1" style="border-color:var(--p1)">Daniel</a><a href="?r=2" style="border-color:var(--p2)">Gäste</a>`;
+  throw new Error("Rolle wählen");
+}
+document.documentElement.style.setProperty("--c", `var(--${me})`);
+$("who").textContent = NAME[me];
+
+const db = getDatabase(initializeApp(CONFIG));
+let St = {}, A = {}, online = false, lastRound = -1, err = "";
+const fail = e => { err = /permission/i.test(e && (e.code || e.message) || "") ? "Datenbank verweigert den Zugriff." : "Fehler: " + (e && e.message || e); render(); };
+onValue(ref(db, ".info/connected"), s => { online = !!s.val(); render(); });
+onValue(ref(db, `rooms/${room}/state`), s => { St = s.val() || {}; render(); }, fail);
+onValue(ref(db, `rooms/${room}/ans`), s => { A = s.val() || {}; render(); }, fail);
+
+function render() {
+  const round = St.round || 0, mine = A[me] && A[me].r === round ? A[me].v : null;
+  if (round !== lastRound) { lastRound = round; $("val").value = ""; }
+  $("qbox").hidden = !round;
+  $("q").textContent = St.q || "";
+  $("eb").textContent = St.open ? "Jetzt schätzen" : "Frage";
+  const canType = round && St.open && mine === null && online;
+  $("form").hidden = !canType;
+  $("done").hidden = mine === null;
+  $("dv").textContent = mine ?? "";
+  $("msg").textContent = err || (!online ? "Keine Verbindung. Internet prüfen."
+    : !round ? "Warte auf die erste Schätzfrage …"
+    : mine !== null ? ""
+    : St.open ? "Antwort eintippen und absenden. Ändern geht danach nicht mehr."
+    : "Die Zeit ist um. Warte auf die nächste Frage.");
+}
+
+$("kb").onclick = () => {
+  const t = $("val").inputMode === "decimal";
+  $("val").inputMode = t ? "text" : "decimal";
+  $("kb").textContent = t ? "123" : "ABC";
+  $("val").blur(); setTimeout(() => $("val").focus(), 50);
+};
+$("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = $("val").value.trim();
+  if (!v || !St.open || !St.round) return;
+  $("send").disabled = true;
+  set(ref(db, `rooms/${room}/ans/${me}`), {v: v.slice(0, 40), r: St.round})
+    .then(() => { try { navigator.vibrate && navigator.vibrate(80); } catch (x) {} })
+    .catch(fail).finally(() => { $("send").disabled = false; });
+});
+render();
+</script>
+</body>
+</html>
